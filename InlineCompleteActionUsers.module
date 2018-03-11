@@ -1,0 +1,111 @@
+<?php
+
+/**
+ *
+ * Action for ProcessCKInlineComplete that allows quick insertion of links to users.
+ *
+ * This module is a supplement for ProcessCKInlineComplete.
+ *
+ * (c) 2018 by BitPoet https://github.com/bitpoet
+ *
+ * Released under MIT license
+ *
+ */
+
+class InlineCompleteActionUsers extends InlineCompleteAction {
+	
+	public static function getModuleInfo() {
+		return array(
+			"title"		=>	"Autocomplete for Users",
+			"summary"	=>	"Add autocomplete action for PW users to Autocomplete for CKEditor",
+			"version"	=>	"0.1.0",
+			"autoload"	=>	function() {
+				$p = wire('page');
+				if($p->template != "admin") return false;
+				if($p->process === "ProcessPageEdit" || $p->process === "ProcessField" || $p->process === "ProcessCKInlineComplete") {
+					return true;
+				}
+				return false;
+			},
+			"requires"	=>	array(
+				"ProcessCKInlineComplete",
+				"InlineCompleteAction"
+			)
+		);
+	}
+	
+	
+	public function init() {
+		parent::init();
+		$this->set("resultTpl", "<li title='{email}'>{name}</li>");
+		$this->set("insertTpl", "<a class='inlineuser' href='mailto:{email}'>@{name}</a>");
+		$this->set("userfields", array());
+	}
+	
+	
+	public function executeFilter($post) {
+
+		$ret = [];
+		
+		$filter = $this->sanitizer->selectorValue($post->filter);
+
+		$users = $this->users->find("name^=$filter");
+		
+		foreach($users as $user) {
+			$ret[] = array(
+				"name"	=>	$user->name,
+				"email"	=>	$user->email
+			);
+			foreach($this->userfields as $fld) {
+				$ret[$fld] = $user->$fld;
+			}
+		}
+		
+		return $ret;
+	}
+	
+	/**
+	 *
+	 * Override default settings here.
+	 *
+	 * We open the Hanna Code picker with the first square bracket but only
+	 * use the text after two consecutive brackets as the search pattern.
+	 *
+	 * We also overwrite the dropdown label.
+	 *
+	 */
+	public function ___getActionSettings() {
+		return array(
+			"typeAheadChar"			=>	"@",
+			"typeAheadAfter"		=>	"@",
+			"ddLabel"				=>	$this->_("Select User:"),
+			"returnColumns"			=>	["name","email","url"],
+			"isText"				=>	false,
+		);
+	}
+
+	public function ___getSettingsFields($field) {
+		$wrap = parent::___getSettingsFields($field);
+		
+		$ut = $this->templates->get("user");
+		
+		$f = $this->modules->get("InputfieldAsmSelect");
+		$f->label = $this->_("Fields to return from search");
+		$f->attr("name", "userfields");
+		
+		$opts = array();
+		foreach($ut->fields as $ufield) {
+			if($ufield->type instanceof FieldtypeText && $ufield->name != "email")
+				$opts[$ufield->name] = $ufield->label ?: $ufield->name;
+		}
+		ksort($opts);
+		
+		$f->addOptions($opts);
+		$f->attr("value", $this->userfields);
+		$f->description = $this->_("By default, only name and email are returned from the search. Configure any additional fields here.");
+		$wrap->add($f);
+		
+		
+		return $wrap;
+	}
+}

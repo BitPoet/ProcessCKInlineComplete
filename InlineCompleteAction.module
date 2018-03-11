@@ -1,0 +1,158 @@
+<?php
+
+/**
+ * Base class for actions for ProcessCKInlineComplete
+ *
+ * This module is a supplement for ProcessCKInlineComplete.
+ *
+ * (c) 2018 by BitPoet https://github.com/bitpoet
+ *
+ * Released under MIT license
+ *
+ */
+
+class InlineCompleteAction extends WireData implements Module {
+	
+	public static function getModuleInfo() {
+		return array(
+			"title"		=>	"Autocomplete Action Base Class",
+			"summary"	=>	"Base class for actions for ProcessCKInlineComplete",
+			"version"	=>	"0.1.0",
+			"autoload"	=>	function() {
+				$p = wire('page');
+				if($p->template != "admin") return false;
+				if($p->process === "ProcessPageEdit" || $p->process === "ProcessField"|| $p->process === "ProcessCKInlineComplete") {
+					wire('log')->message("Autoloading InlineCompleteAction for process " . $p->process);
+					return true;
+				}
+				return false;
+			},
+		);
+	}
+
+	/**
+	 * Set the name of the action to the lowercased part of the module name following "InlineCompleteAction".
+	 * The name for all action modules needs to start with "InlineCompleteAction".
+	 */
+	public function init() {
+		if($this->className != "InlineCompleteAction") {
+			$name = strtolower(str_replace("InlineCompleteAction", "", $this->className));
+			$this->set("name", $name);
+		}
+		if(strpos($this->className, "InlineCompleteAction") === 0)
+			$this->addHookAfter("ProcessCKInlineComplete::registerActions", $this, "registerAction");
+		
+		$this->set('limit', 30);
+		$this->set('dropdownWidth', 200);
+		$this->set('dropdownHeight', 400);
+		$this->set('resultTpl', '<li>{name}</li>');
+		$this->set('insertTpl', '{value}');
+	}
+	
+	/**
+	 *
+	 * Simply add this instance to the return of ProcessCKInlineComplete
+	 *
+	 */
+	public function registerAction(HookEvent $event) {
+		if($this->className != "InlineCompleteAction") {
+			$actions = $event->return;
+			$actions[] = $this;
+			$event->return = $actions;
+		}
+	}
+	
+	/**
+	 *
+	 * Retrieve the CSS stylesheet. Looks first in the site/templates/styles, then in
+	 * the module's directory for a file matching CLASSNAME.css and, if found, adds
+	 * it to the styles.
+	 *
+	 */
+	public function getCss() {
+		$cssPath = $this->config->paths->templates . "styles" . \DIRECTORY_SEPARATOR . $this->className . ".css";
+		if(file_exists($cssPath)) {
+			return $this->config->urls->{$this->className} . "styles/" . $this->className . ".css";
+		}
+
+		$cssPath = $this->config->paths->{$this->className} . $this->className . ".css";
+		if(file_exists($cssPath)) {
+			return $this->config->urls->{$this->className} . $this->className . ".css";
+		}
+		
+		return "";
+	}
+	
+	/**
+	 *
+	 * Override this in your action implementation to return module-specific
+	 * settings for the CKEditor plugin, like the character that invokes the
+	 * autocomplete or the dropdown label. Note that you don't have to add
+	 * settings here that should be configurable by the user. Set those in
+	 * init() and add a configuration field in ___getSettingsFields.
+	 *
+	 * See the README for ProcessCKInlineComplete for a list of
+	 * applicable settings. Simply return an associative array
+	 * with these settings in your action class.
+	 *
+	 */
+	public function ___getActionSettings() {
+		return array(
+			// Must be set if your insert template is plain text and not a
+			// valid HTML element, otherwise the plugin.js will throw an
+			// an error and fail to insert the result
+			"isText"		=>	true,
+		);
+	}
+	
+	
+	/**
+	 * Configurable settings. These inputfields will be added to each
+	 * CKEditor field's input settings.
+	 */
+	public function ___getSettingsFields($field) {
+		$wrap = new InputfieldWrapper();
+		
+		$f = $this->modules->get("InputfieldText");
+		$f->attr('name', 'limit');
+		$f->attr('value', $this->limit);
+		$f->attr('size', 5);
+		$f->label = $this->_("Result limit");
+		$f->description = $this->_("Return at most this many results at once. Default is 30.");
+		$wrap->add($f);
+		
+		$f = $this->modules->get("InputfieldInteger");
+		$f->attr('name', 'dropdownWidth');
+		$f->attr('value', $this->dropdownWidth);
+		$f->attr('size', 5);
+		$f->columnWidth = 50;
+		$f->label = $this->_("Dropdown width");
+		$f->description = $this->_("Width of the select dropdown in pixels. Default is 200px");
+		$wrap->add($f);
+
+		$f = $this->modules->get("InputfieldInteger");
+		$f->attr('name', 'dropdownHeight');
+		$f->attr('value', $this->dropdownHeight);
+		$f->attr('size', 5);
+		$f->columnWidth = 50;
+		$f->label = $this->_("Dropdown height");
+		$f->description = $this->_("Height of the select dropdown in pixels. Default is 400px");
+		$wrap->add($f);
+
+		$f = $this->modules->get("InputfieldText");
+		$f->label = $this->_("Result Template");
+		$f->attr('name', 'resultTpl');
+		$f->attr('value', $this->resultTpl);
+		$f->description = $this->_("Template for the dropdown list, must be a li element");
+		$wrap->add($f);
+		
+		$f = $this->modules->get("InputfieldText");
+		$f->label = $this->_("Insert Template");
+		$f->attr('name', 'insertTpl');
+		$f->attr('value', $this->insertTpl);
+		$f->description = $this->_("Template for inserting the result into CKEditor, uses placeholders in curly braces, e.g. {value}");
+		$wrap->add($f);
+
+		return $wrap;
+	}
+}

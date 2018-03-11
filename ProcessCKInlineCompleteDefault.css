@@ -1,0 +1,61 @@
+
+div.pwinlinecomplete_wrap {
+	display:			inline-block;
+	z-index:			999;
+	margin-top:			15px;
+	border:				1px solid grey;
+	border-radius:		0.2;
+	background-color:	white;
+	position:			absolute;
+	width:				auto;
+	margin:				0.2em;
+	padding:			0.2em;
+	list-style-type:	none;
+	min-width:			80px;
+	min-height:			40px;
+}
+
+div.pwinlinecomplete_wrap:before {
+	content:			"";
+	position:			absolute;
+	top:				0;
+	left:				20px;
+	height:				20px;
+	width:				20px;
+	background:			white;
+	box-sizing:			border-box;
+	transform:			rotate(-135deg) translate(70%);
+	border-bottom:		inherit;
+	border-right:		inherit;
+	box-shadow:			inherit;
+}
+
+div.pwinlinecomplete_label {
+	padding-top:		13px;
+	z-index:			inherit;
+	font-size:			0.9em;
+	color:				rgb(128,128,128);
+}
+
+ul.pwinlinecomplete > li {
+	z-index:			inherit;
+	cursor:				pointer;
+	padding:			0.5em;
+	list-style-type:	none;
+	color:				rgb(0, 10, 45);
+}
+
+ul.pwinlinecomplete > li:hover {
+	background-color:	rgb(185,220,255);
+}
+
+ul.pwinlinecomplete > li[data-selected] {
+	background-color:	rgb(215,230,255);
+	font-weight:		bold;
+}
+
+/* Placeholder for your conveniene or as an example */
+li.pwinlinecomplete-entry {
+	
+}
+

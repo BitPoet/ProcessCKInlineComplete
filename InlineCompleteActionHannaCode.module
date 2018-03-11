@@ -1,0 +1,101 @@
+<?php
+
+/**
+ *
+ * Action for ProcessCKInlineComplete that allows quick insertion of Hanna Codes
+ *
+ * This module is a supplement for ProcessCKInlineComplete.
+ *
+ * (c) 2018 by BitPoet https://github.com/bitpoet
+ *
+ * Released under MIT license 
+ *
+ */
+
+class InlineCompleteActionHannaCode extends InlineCompleteAction {
+	
+	public static function getModuleInfo() {
+		return array(
+			"title"		=>	"Autocomplete for Hanna Code",
+			"summary"	=>	"Add autocomplete action for Hanna Code to Autocomplete for CKEditor",
+			"version"	=>	"0.1.0",
+			"autoload"	=>	function() {
+				$p = wire('page');
+				if($p->template != "admin") return false;
+				if($p->process === "ProcessPageEdit" || $p->process === "ProcessField" || $p->process === "ProcessCKInlineComplete") {
+					wire('log')->message("Autoloading InlineCompleteActionHannaCode for process " . $p->process);
+					return true;
+				}
+				return false;
+			},
+			"requires"	=>	array(
+				"ProcessCKInlineComplete",
+				"InlineCompleteAction",
+				"TextformatterHannaCode"
+			)
+		);
+	}
+	
+	public function init() {
+		parent::init();
+		$this->set('resultTpl', "<li title='{value}'>{name}</li>");
+		$this->set('insertTpl', '{value}');
+	}
+	
+	public function executeFilter($options) {
+
+		$ret = [];
+
+		$hanna = $this->modules->get('TextformatterHannaCode');
+
+		$filter = $this->sanitizer->selectorValue($options->filter);
+
+		$database = $this->wire('database');
+
+		$sql = "SELECT `id`, `name`, `code` FROM hanna_code WHERE `name` LIKE '%$filter%' ORDER BY name LIMIT 0, 20";
+		$query = $database->prepare($sql); 
+
+		$query->execute();
+		
+		while($row = $query->fetch(\PDO::FETCH_ASSOC)) {
+			$entry = "[[" . $row["name"];
+			foreach($hanna->extractDefaultCodeAttrs($row["code"]) as $attrName => $attrValue) {
+				$entry .= " $attrName='$attrValue'";
+			}
+			$entry .= "]]";
+			$ret[] = array("name" => $row["name"], "value" => $entry);
+		}
+		
+		return $ret;
+	}
+	
+	/**
+	 *
+	 * We open the Hanna Code picker with the first square bracket but only
+	 * use the text after two consecutive brackets as the search pattern.
+	 *
+	 * We also overwrite the dropdown label.
+	 *
+	 */
+	public function ___getActionSettings() {
+		$settings = array(
+			"typeAheadChar"			=>	"[",
+			"typeAheadAfter"		=>	"[[",
+			"ddLabel"				=>	$this->_("Select Hanna Code:"),
+			"returnColumns"			=>	["name","value"],
+			"isText"				=>	true,
+		);
+		return array_merge($settings, parent::___getActionSettings());
+	}
+	
+	/**
+	 *
+	 * No special configurable fields here for CKEditor's input tab so far.
+	 *
+	 */
+	public function ___getSettingsFields($field) {
+		$wrap = parent::___getSettingsFields($field);
+		
+		return $wrap;
+	}
+}

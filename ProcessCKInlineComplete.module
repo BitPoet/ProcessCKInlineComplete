@@ -1,0 +1,293 @@
+<?php
+
+/**
+ * ProcessWire module that adds inline autocomplete to CKEditor.
+ *
+ * This is the "bare metal" and extension point for further plugins which
+ * determine the exact behavior of the inline completion, which my be page
+ * links, images, file links or Hanna Codes.
+ *
+ * Most settings are configurable in the module's configuration settings.
+ *
+ * Styles are set in ProcessCKInlineCompleteDefault.css in the module dir but
+ * can be adapted by placing a customized copy renamed to ProcessCKInlineComplete.css
+ * in the site/templates/styles directory.
+ *
+ * ToDo:
+ * Make settings configurable in template context
+ *
+ *
+ * Author: BitPoet
+ * 
+ * License:
+ * Released under Mozilla Public License 2.0
+ *
+ */
+
+class ProcessCKInlineComplete extends Process implements ConfigurableModule {
+	
+	public static function getModuleInfo() {
+		return array(
+			"title"			=>	"Autocomplete for CKEditor",
+			"summary"		=>	"Allow quick insertion of PW items inside CKEditor",
+			"version"		=>	"0.1.0",
+			"autoload"		=>	function() {
+				$p = wire('page');
+				if(! $p->template == "admin") return false;
+				if($p->process == "ProcessPageEdit" || $p->process == "ProcessField") return true;
+				return false;
+			},
+			"installs"		=>	array(
+				"InlineCompleteAction"
+			),
+			"page"			=>	[
+				"name"			=>	"inlinecomplete",
+				"title"			=>	"CKE Inline Complete",
+				"status"		=>	"hidden"
+			]
+		);
+	}
+	
+	public function __construct() {
+		$this->set("actions", array());
+	}
+	
+	/**
+	 * Initialization
+	 */
+	public function init() {
+		
+		$class = $this->modules->getModuleClass($this);
+		$path  = $this->config->paths->templates . "styles" . \DIRECTORY_SEPARATOR;
+		$url   = $this->config->urls->templates . "styles/";
+		$name  = $class . ".css";
+		if(! file_exists($path . $name)) {
+			$name  = $class . "Default.css";
+			$url   = $this->config->urls->$class;
+			$path  = $this->config->paths->$class;
+		}
+		$ts    = filemtime($path . $name);
+		$info  = self::getModuleInfo();
+		$this->config->styles->add($url . $name . "?v=" . $info["version"] . "-" . $ts);
+		
+		parent::init();
+		
+		$this->addHookAfter("InputfieldCKEditor::renderReadyHook", $this, "injectSettings");
+		$this->addHookAfter("InputfieldCKEditor::getConfigInputfields", $this, "addEditorConfig");
+		$this->addHookAfter("ProcessPageEdit::execute", $this, "addPlugins");
+	}
+	
+
+	/**
+	 * Call the registerActions hookable as soon as the module is ready.
+	 */	
+	public function ready() {
+		$this->actions = $this->registerActions();
+	}
+	
+	
+	/**
+	 * Add plugin to CKEditor in ProcessPageEdit
+	 */
+	public function addPlugins(HookEvent $event) {
+		
+		// add JS
+		$js = '';
+		$js_config = $this->config->js();
+		foreach ($js_config as $key => $value) {
+			if(strpos($key, 'InputfieldCKEditor_') !== false) {
+				$js .= "config.$key.extraPlugins += ',inlinecomplete';";
+			}
+		}
+
+		$plugins_path = $this->config->urls->{$this->className};
+		$js = "CKEDITOR.plugins.addExternal('inlinecomplete', '{$plugins_path}inlinecomplete/plugin.js');" . $js;
+		
+		$event->return = "<script>$js</script>" . $event->return;
+	}
+	
+	
+	/**
+	 *
+	 * Filter pages by the value supplied in $_POST["filter"]
+	 *
+	 * Performs a LIKE database search matching anywhere in the hanna code name
+	 *
+	 */
+	public function ___execute() {
+
+		if(! $this->config->ajax) {
+			return "<p>" . $this->_("This page acts as an AJAX-only interface for the Autocomplete module") . "</p>";
+		}
+		
+		if(count($this->actions) == 0) $this->actions = $this->registerActions();
+
+		header('Content-Type: application/json');
+		
+		$ret = [];
+		
+		$post = $this->input->post;
+		
+		if(! $post->action || ! $post->page || ! $post->field || ! $post->filter) {
+			$this->log->error(sprintf($this->_("Missing POST parameters for %s::execute"), $this->className));
+			echo json_encode($ret);
+			return;
+		}
+		
+		$pageId = (int)$this->input->post->page;
+		$editPage = $this->pages->get($pageId);
+		$fieldName = $this->sanitizer->fieldName($post->field);
+		$actionName = $this->sanitizer->name($post->action);
+		
+		if($editPage instanceof NullPage) {
+			$this->log->error(sprintf($this->_("Invalid page %d"), $pageId));
+			echo json_encode($ret);
+			return;
+		}
+		
+		if(! $editPage->editable($fieldName)) {
+			$this->log->error(sprintf($this->_("No permission to edit field %s on page %d"), $fieldName, $pageId));
+			echo json_encode($ret);
+			return;
+		}
+		
+		foreach($this->actions as $action) {
+			$this->log->message(sprintf("Cecking action: %s", $actionName));
+			if($action->name == $actionName) {
+				break;
+			}
+		}
+		
+		if(! $action) {
+			$this->log->error(sprintf($this->_("No such action: %s"), $actionName));
+			echo json_encode($ret);
+			return;
+		}
+		
+		$ret = $action->executeFilter($post);
+		
+		echo json_encode($ret, \JSON_PRETTY_PRINT);
+	}
+	
+	/**
+	 *
+	 * Inject editor settings into the PW javascript config object
+	 *
+	 */
+	public function injectSettings(HookEvent $event) {
+
+		$editor = $event->object;
+		
+		$fname = $editor->attr('name');
+		$field = $this->fields->get($fname);
+
+		$actions = [];
+
+		$defaultConf = [
+			"url"				=>		$this->pages->get("template=admin, name=inlinecomplete")->url,
+			"name"				=>		$fname,
+			"page"				=>		(int)$this->input->get->id
+		];
+
+		foreach($this->actions as $action) {
+			$prefix = $fname . "__" . $action->name . "__";
+
+			if(! $field->{$prefix . "useAction"}) continue;
+			
+			$conf = $action->getActionSettings();
+			$conf["action"] = $action->name;
+
+			$sFields = $action->getSettingsFields($field);
+			
+			foreach($sFields->children as $sField) {
+				if($sField instanceof InputfieldMarkup) continue;
+				$name = $sField->attr('name');
+				$conf[$name] = $field->{$prefix . $name} ?: $action->$name;
+			}
+			
+			$sFields = null;
+			
+			$conf = array_merge($defaultConf, $conf);
+			
+			$actions[] = $conf;
+		}
+
+		$cfgName = $editor->className() . '_' . $editor->name;
+		if(strpos($cfgName, '_repeater')) $cfgName = preg_replace('/_repeater\d+/', '', $cfgName);
+		
+		$config = $this->config->js($cfgName);
+		
+		$config["inlinecomplete"] = array("actions" => $actions);
+		
+		$this->config->js($cfgName, $config);
+	}
+	
+	
+	/**
+	 * All actions register themselves by hooking into this method
+	 * and adding themselves to the returned array
+	 */
+	public function ___registerActions() {
+		return array();
+	}
+	
+	/**
+	 *
+	 * Add own configuration fields to CKEditor input config
+	 *
+	 */
+	public function addEditorConfig(HookEvent $event) {
+
+		$editor = $event->object;
+		
+		$outer = $event->return;
+		
+		$fname = $editor->attr('name');
+		$field = $this->fields->get($fname);
+		
+		foreach($this->actions as $action) {
+			
+			$actionName = str_replace('InlineCompleteAction', '', $action->className);
+			$prefix = $fname . "__" . $action->name . "__";			
+			
+			$useAction = $this->modules->get("InputfieldCheckbox");
+			$useAction->checkedValue = "1";
+			$useAction->attr('name', $prefix . "useAction");
+			$useAction->label = sprintf($this->_("Use Autocomplete action '%s' in this field"), $actionName);
+			if($field->{$prefix . "useAction"} == "1") $useAction->attr('checked', 'checked');
+			$outer->append($useAction);
+			
+			$wrapper = $this->modules->get("InputfieldFieldset");
+			$wrapper->label = sprintf($this->_("Autocomplete Settings for '%s' Action"), $actionName);
+			$wrapper->showIf = $prefix . "useAction=1";
+			
+			$sFields = $action->getSettingsFields($field);
+			
+			foreach($sFields->children as $sField) {
+				if($sField instanceof InputfieldMarkup) continue;
+				$sFields->remove($sField);
+				$name = $sField->attr('name');
+				$sField->attr('name', $prefix . $name);
+				$sField->attr('value', $field->{$prefix . $name} ?: $action->$name);
+				$wrapper->add($sField);
+			}
+			
+			$outer->append($wrapper);
+		}
+		
+		$event->return = $outer;
+	}
+	
+	
+	/**
+	 *
+	 * Get module configuration fields
+	 *
+	 */
+	public function getModuleConfigInputfields($data) {
+		$inputfields = new InputfieldWrapper();
+		
+		return $inputfields;
+	}
+	
+}
