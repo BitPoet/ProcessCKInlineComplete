@@ -18,12 +18,11 @@ class InlineCompleteActionHannaCode extends InlineCompleteAction {
 		return array(
 			"title"		=>	"Autocomplete for Hanna Code",
 			"summary"	=>	"Add autocomplete action for Hanna Code to Autocomplete for CKEditor",
-			"version"	=>	"0.1.0",
+			"version"	=>	"0.1.1",
 			"autoload"	=>	function() {
 				$p = wire('page');
 				if($p->template != "admin") return false;
 				if($p->process === "ProcessPageEdit" || $p->process === "ProcessField" || $p->process === "ProcessCKInlineComplete") {
-					wire('log')->message("Autoloading InlineCompleteActionHannaCode for process " . $p->process);
 					return true;
 				}
 				return false;

@@ -17,12 +17,11 @@ class InlineCompleteAction extends WireData implements Module {
 		return array(
 			"title"		=>	"Autocomplete Action Base Class",
 			"summary"	=>	"Base class for actions for ProcessCKInlineComplete",
-			"version"	=>	"0.1.0",
+			"version"	=>	"0.1.1",
 			"autoload"	=>	function() {
 				$p = wire('page');
 				if($p->template != "admin") return false;
 				if($p->process === "ProcessPageEdit" || $p->process === "ProcessField"|| $p->process === "ProcessCKInlineComplete") {
-					wire('log')->message("Autoloading InlineCompleteAction for process " . $p->process);
 					return true;
 				}
 				return false;
