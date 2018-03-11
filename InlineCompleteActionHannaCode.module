@@ -18,7 +18,7 @@ class InlineCompleteActionHannaCode extends InlineCompleteAction {
 		return array(
 			"title"		=>	"Autocomplete for Hanna Code",
 			"summary"	=>	"Add autocomplete action for Hanna Code to Autocomplete for CKEditor",
-			"version"	=>	"0.1.1",
+			"version"	=>	"0.1.4",
 			"autoload"	=>	function() {
 				$p = wire('page');
 				if($p->template != "admin") return false;
@@ -57,11 +57,11 @@ class InlineCompleteActionHannaCode extends InlineCompleteAction {
 		$query->execute();
 		
 		while($row = $query->fetch(\PDO::FETCH_ASSOC)) {
-			$entry = "[[" . $row["name"];
+			$entry = $hanna->openTag . $row["name"];
 			foreach($hanna->extractDefaultCodeAttrs($row["code"]) as $attrName => $attrValue) {
 				$entry .= " $attrName='$attrValue'";
 			}
-			$entry .= "]]";
+			$entry .= $hanna->closeTag;
 			$ret[] = array("name" => $row["name"], "value" => $entry);
 		}
 		
@@ -77,9 +77,12 @@ class InlineCompleteActionHannaCode extends InlineCompleteAction {
 	 *
 	 */
 	public function ___getActionSettings() {
+
+		$hanna = $this->modules->get('TextformatterHannaCode');
+
 		$settings = array(
-			"typeAheadChar"			=>	"[",
-			"typeAheadAfter"		=>	"[[",
+			"typeAheadChar"			=>	substr($hanna->openTag, 0, 1),
+			"typeAheadAfter"		=>	$hanna->openTag,
 			"ddLabel"				=>	$this->_("Select Hanna Code:"),
 			"returnColumns"			=>	["name","value"],
 			"isText"				=>	true,

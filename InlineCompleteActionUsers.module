@@ -18,7 +18,7 @@ class InlineCompleteActionUsers extends InlineCompleteAction {
 		return array(
 			"title"		=>	"Autocomplete for Users",
 			"summary"	=>	"Add autocomplete action for PW users to Autocomplete for CKEditor",
-			"version"	=>	"0.1.1",
+			"version"	=>	"0.1.4",
 			"autoload"	=>	function() {
 				$p = wire('page');
 				if($p->template != "admin") return false;

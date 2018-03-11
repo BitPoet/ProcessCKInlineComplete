@@ -17,7 +17,7 @@ class InlineCompleteAction extends WireData implements Module {
 		return array(
 			"title"		=>	"Autocomplete Action Base Class",
 			"summary"	=>	"Base class for actions for ProcessCKInlineComplete",
-			"version"	=>	"0.1.1",
+			"version"	=>	"0.1.4",
 			"autoload"	=>	function() {
 				$p = wire('page');
 				if($p->template != "admin") return false;
@@ -97,6 +97,14 @@ class InlineCompleteAction extends WireData implements Module {
 	 */
 	public function ___getActionSettings() {
 		return array(
+			// The character that triggers autocompletion
+			//"typeAheadChar"	=>	"~",
+			
+			// The string after which the search pattern starts, will be the
+			// same as typeAheadChar the most time, but it may differ for
+			// multi-letter starting strings like with Hanna Codes ("[[")
+			//"typeAheadAfter"	=>	"~~",
+			
 			// Must be set if your insert template is plain text and not a
 			// valid HTML element, otherwise the plugin.js will throw an
 			// an error and fail to insert the result
