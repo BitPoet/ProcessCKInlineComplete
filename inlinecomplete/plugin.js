@@ -263,8 +263,10 @@ CKEDITOR.plugins.inlinecomplete = function(editor, config) {
 	                				for(var i = 0, l = data.length; i < l; i++) {
 	                					var row = data[i];
 	                					
-	                					var resTpl = '<li title="{value}">{name}</li>';
-	                					var cols = ["name", "value"];
+//	                					var resTpl = '<li title="{value}">{name}</li>';
+//	                					var cols = ["name", "value"];
+										var resTpl = thisObj.inlinecomplete.resultTpl;
+										var cols = thisObj.inlinecomplete.returnColumns;
 	                					
 	                					for(var cl = cols.length, j = 0; j < cl; j++) {
 	                						var re = new RegExp('\\{' + cols[j] + '\\}', 'g');
