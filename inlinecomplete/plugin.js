@@ -147,7 +147,7 @@ CKEDITOR.plugins.inlinecomplete = function(editor, config) {
 
 	    var target_body = $(target).parents('body');
 	    if ($('body').get(0) === target_body.get(0)) {
-	        return target.offset();
+		    return $(target).offset();
 	    }
 	    
 	    // find the corresponding iframe container                                 
@@ -155,9 +155,10 @@ CKEDITOR.plugins.inlinecomplete = function(editor, config) {
 	        var iframe_body = $(this).contents().find('body');
 	        return target_body.get(0) === iframe_body.get(0);
 	    });
-	    
+
+		var iframe_scrolltop = iframe.contents().find('html').scrollTop();
 	    var left = $(iframe).offset().left + $(target).offset().left;
-	    var top = $(iframe).offset().top + $(target).offset().top;
+		var top = $(iframe).offset().top + $(target).offset().top - iframe_scrolltop;
 
 		return {left: left, top: top};
 	}
