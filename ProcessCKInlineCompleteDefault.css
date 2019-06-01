@@ -37,6 +37,11 @@ div.pwinlinecomplete_label {
 	color:				rgb(128,128,128);
 }
 
+ul.pwinlinecomplete {
+	padding:			0;
+	margin:				0;
+}
+
 ul.pwinlinecomplete > li {
 	z-index:			inherit;
 	cursor:				pointer;
