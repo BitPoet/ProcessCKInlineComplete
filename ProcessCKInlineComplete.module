@@ -95,6 +95,17 @@ class ProcessCKInlineComplete extends Process implements ConfigurableModule {
 		// Thanks to outflux3!
 		if($this->input->get('InputfieldFileAjax')) return;
 		
+		// Don't add plugin if there is no CKE field on the page
+		$pg = $event->object->getPage();
+		$hasCKE = false;
+		foreach($pg->template->fields as $f) {
+			if($f->type instanceof FieldtypeTextarea && $f->type->getInputfield($pg, $f) instanceof InputfieldCKEditor) {
+				$hasCKE = true;
+				break;
+			}
+		}
+		if(! $hasCKE) return;
+		
 		// add JS
 		$js = '';
 		$js_config = $this->config->js();
