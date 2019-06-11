@@ -30,7 +30,7 @@ class ProcessCKInlineComplete extends Process implements ConfigurableModule {
 		return array(
 			"title"			=>	"Autocomplete for CKEditor",
 			"summary"		=>	"Allow quick insertion of PW items inside CKEditor",
-			"version"		=>	"0.1.9",
+			"version"		=>	"0.1.10",
 			"autoload"		=>	function() {
 				$p = wire('page');
 				if(! $p->template == "admin") return false;
@@ -94,6 +94,17 @@ class ProcessCKInlineComplete extends Process implements ConfigurableModule {
 		// Don't add plugin JS when a file is requested, fixes https://github.com/BitPoet/ProcessCKInlineComplete/issues/2
 		// Thanks to outflux3!
 		if($this->input->get('InputfieldFileAjax')) return;
+		
+		// Don't add plugin if there is no CKE field on the page
+		$pg = $event->object->getPage();
+		$hasCKE = false;
+		foreach($pg->template->fields as $f) {
+			if($f->type instanceof FieldtypeTextarea && $f->type->getInputfield($pg, $f) instanceof InputfieldCKEditor) {
+				$hasCKE = true;
+				break;
+			}
+		}
+		if(! $hasCKE) return;
 		
 		// add JS
 		$js = '';
