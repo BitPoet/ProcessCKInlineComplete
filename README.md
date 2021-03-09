@@ -23,6 +23,19 @@ The module comes with a default (ugly) css to style the selection dialog. If you
 copy the ```ProcessCKInlineCompleteDefault.css``` in the module's directory to ```site/templates/styles``` and rename it to
 ```ProcessCKInlineComplete.css```
 
+## Modules in this package
+
+This package ships with four modules:
+
+* ProcessCKInlineComplete - Autocomplete for CKEditor  
+  This module provides the AJAX endpoint for all InlineComplete actions. It doesn't do anything visible otherwise, but it is an essential part.
+* InlineCompleteAction - Autocomplete Action Base Class  
+  Every InlineComplete Action class has to inherit from this one. As the text says, it is just the base class for all actions and doesn't do anything visible either.
+* InlineCompleteActionHannaCode - Autocomplete for Hanna Code  
+  Example implementation that lets you easily insert Hanna codes into you CKEditor field. Just type the opening square bracket and the beginning of the individual code, and a selection list will pop up with all the matching codes. Once the module is installed, you can enable and costumize it in any CKEditor field's settings.
+* InlineCompleteActionUser - AUtocomplete for User  
+  Another example implementation. Just type "@" and the first characters of a PW user's name, and it will insert a link to the user's profile. Once the module is installed, you can enable and costumize it in any CKEditor field's settings.
+
 ## Writing Custom Actions
 You can write your own action modules. You need to make sure that
 * their name starts with "InlineCompleteAction"
